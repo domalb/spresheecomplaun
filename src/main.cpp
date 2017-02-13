@@ -3,9 +3,6 @@
 #include <iostream>
 #include <fstream>
 
-#define ARG_DIRECTORY L"-d="
-static const size_t argDirectoryLength = sizeof(ARG_DIRECTORY) / sizeof(wchar_t) - 1;
-
 //----------------------------------------------------------------------------------------------------------------------
 //
 //----------------------------------------------------------------------------------------------------------------------
@@ -242,6 +239,8 @@ int wmain(int argc, wchar_t *argv[], wchar_t *envp[])
 		const wchar_t * arg = argv[i];
 		if(arg != NULL)
 		{
+#define ARG_DIRECTORY L"-d="
+			static const size_t argDirectoryLength = sizeof(ARG_DIRECTORY) / sizeof(ARG_DIRECTORY[0]) - 1;
 			if(_wcsnicmp(arg, L"-d=", argDirectoryLength) == 0)
 			{
 				if(exeFolder[0] != 0)

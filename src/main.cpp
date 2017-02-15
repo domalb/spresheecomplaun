@@ -42,7 +42,7 @@ int getSpreadsheetCompareFolder(wchar_t* buffer)
 	// 	const wchar_t* office2013 = L"{91150000-0011-0000-0000-0000000FF1CE}";
 	// 	const wchar_t* excel = L"{CC29E96F-7BC2-11D1-A921-00A0C91E2AA2}";
 	DWORD officeFolderLength = MAX_PATH;
-	INSTALLSTATE install = MsiLocateComponentW(office, buffer, &officeFolderLength);
+	INSTALLSTATE install = ::MsiLocateComponentW(office, buffer, &officeFolderLength);
 	const wchar_t* installError;
 	switch(install)
 	{
@@ -60,13 +60,27 @@ int getSpreadsheetCompareFolder(wchar_t* buffer)
 	}
 	if(installError != NULL)
 	{
-		std::wcout << installError << L" error detecting office component installation folder";
+		std::wcout << L" could not detect office component installation folder, error " << installError;
+	}
+	else
+	{
+		wcscat_s(buffer, MAX_PATH, L"\\DCF");
+
+		if(testSpreadsheetCompareFileInfolder(buffer) == false)
+		{
+			std::wcout << L"'spreadsheetcompare.exe' not found in excel installation folder '" << buffer << "'";
+		}
+		else
+		{
+			// Success at getting installation folder
+			return 0;
+		}
 	}
 
 	// Registry key
 	static const wchar_t* const excelKey = L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\excel.exe";
 	HKEY hKey = NULL;
-	LONG openError = ::RegOpenKeyExW(HKEY_LOCAL_MACHINE, excelKey, 0, KEY_READ, &hKey);
+	LONG openError = RegOpenKeyExW(HKEY_LOCAL_MACHINE, excelKey, 0, KEY_READ, &hKey);
 	if(openError != ERROR_SUCCESS)
 	{
 		std::wcout << L"error opening excel installation folder registry key";
@@ -74,7 +88,7 @@ int getSpreadsheetCompareFolder(wchar_t* buffer)
 	else
 	{
 		DWORD bufferSize = MAX_PATH;
-		ULONG queryError = ::RegQueryValueExW(hKey, NULL, NULL, NULL, (LPBYTE)buffer, &bufferSize);
+		ULONG queryError = RegQueryValueExW(hKey, NULL, NULL, NULL, (LPBYTE)buffer, &bufferSize);
 		if(queryError != ERROR_SUCCESS)
 		{
 			std::wcout << L"error reading excel installation folder registry key";
@@ -101,7 +115,7 @@ int getSpreadsheetCompareFolder(wchar_t* buffer)
 					wcscat_s(buffer, MAX_PATH, L"DCF");
 					if(testSpreadsheetCompareFileInfolder(buffer) == false)
 					{
-						std::wcout << L"'spreadsheetcompare.exe' not found in excel installation folder '" << buffer << "'";
+						std::wcout << L"'spreadsheetcompare.exe' not found in excel registry key installation folder '" << buffer << "'";
 					}
 					else
 					{
@@ -182,7 +196,7 @@ int launchCompare(const wchar_t* exeFolder, const wchar_t* tmpFile)
 	wchar_t exeFile[MAX_PATH];
 	wcscpy_s(exeFile, exeFolder);
 	wcscat_s(exeFile, L"\\spreadsheetcompare.exe");
-	HINSTANCE hShellExec = ::ShellExecuteW(NULL, L"open", exeFile, tmpFile, exeFolder, SW_SHOWNORMAL);
+	HINSTANCE hShellExec = ShellExecuteW(NULL, L"open", exeFile, tmpFile, exeFolder, SW_SHOWNORMAL);
 	bool success = (size_t(hShellExec) > 32);
 	return (success ? 0 : -1);
 }

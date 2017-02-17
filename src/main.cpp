@@ -3,6 +3,7 @@
 #include <iostream>
 #include <fstream>
 
+#define SSCL_ARG_VERBOSE L"-v"
 #define SSCL_ARG_PAUSE L"-p"
 #define SSCL_ARG_DIRECTORY L"-d="
 static const size_t SSCL_ARG_DIRECTORY_LENGTH = sizeof(SSCL_ARG_DIRECTORY) / sizeof(SSCL_ARG_DIRECTORY[0]) - 1;
@@ -259,6 +260,7 @@ int wmain(int argc, wchar_t *argv[] /*, wchar_t *envp[]*/)
 	}
 
 	// Parse arguments
+	bool verbose = false;
 	wchar_t exeFolder[MAX_PATH] = { 0 };
 	wchar_t file1[MAX_PATH] = { 0 };
 	wchar_t file2[MAX_PATH] = { 0 };
@@ -270,6 +272,10 @@ int wmain(int argc, wchar_t *argv[] /*, wchar_t *envp[]*/)
 			if(_wcsicmp(arg, SSCL_ARG_PAUSE) == 0)
 			{
 				continue;
+			}
+			if(_wcsicmp(arg, SSCL_ARG_VERBOSE) == 0)
+			{
+				verbose = true;
 			}
 			else if(_wcsnicmp(arg, SSCL_ARG_DIRECTORY, SSCL_ARG_DIRECTORY_LENGTH) == 0)
 			{
@@ -316,23 +322,39 @@ int wmain(int argc, wchar_t *argv[] /*, wchar_t *envp[]*/)
 	// Check arguments
 	if(exeFolder[0] == 0)
 	{
-		wchar_t officeFolder[MAX_PATH] = { 0 };
-		int officeCode = ssclGetSpreadsheetCompareFolder(officeFolder);
+		int officeCode = ssclGetSpreadsheetCompareFolder(exeFolder);
 		if(officeCode != 0)
 		{
-			std::wcout << L"error getting office folder";
+			std::wcout << L"error getting Spreadsheetcompare folder";
 			return -1;
 		}
+	}
+	if(exeFolder[0] == 0)
+	{
+		std::wcout << L"no Spreadsheetcompare folder detected";
+		return -1;
+	}
+	else if(verbose)
+	{
+		std::wcout << L"Spreadsheetcompare folder : " << exeFolder;
 	}
 	if(file1[0] == 0)
 	{
 		std::wcout << L"no compare file detected";
 		return -1;
 	}
-	else if(file2[0] == 0)
+	else if(verbose)
+	{
+		std::wcout << L"File1 : " << file1;
+	}
+	if(file2[0] == 0)
 	{
 		std::wcout << L"only one compare file detected";
 		return -1;
+	}
+	else if(verbose)
+	{
+		std::wcout << L"File2 : " << file2;
 	}
 
 	// Write tmp file
@@ -343,6 +365,10 @@ int wmain(int argc, wchar_t *argv[] /*, wchar_t *envp[]*/)
 		std::wcout << L"error writing tmp file";
 		return writeCode;
 	}
+	else if(verbose)
+	{
+		std::wcout << L"Tmp file : " << tmpFile;
+	}
 
 	// Launch comparison
 	 int launchCode = ssclLaunchCompare(exeFolder, tmpFile);
@@ -351,8 +377,11 @@ int wmain(int argc, wchar_t *argv[] /*, wchar_t *envp[]*/)
 		 std::wcout << L"error writing tmp file";
 		 return launchCode;
 	 }
+	else if(verbose)
+	{
+		std::wcout << L"Launch success";
+	}
 
-	 std::wcout << L"Launch success";
 	 return 0;
 }
 

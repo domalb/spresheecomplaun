@@ -1,13 +1,33 @@
-# spresheecomplaun
-Launcher for spreadsheetcompare.exe
+# Spresheecomplaun
 
-Allows invoking spreadsheetcompare.exe for excel files comparison using basic command line, e.g. :
+Utility to ease Excel files comparison with Spreadsheetcompare.
+More specifically, enables Excel files diff in version control softwares
+
+## Related project
+
+[Excomp](https://githubusercontent.com/kniklas/excomp)
+
+## Spreadsheetcompare
+
+Spreadsheetcompare a tool available in Office which is not command-line friendly.
+The problem was reported in Microsoft TechCenter: http://social.technet.microsoft.com/Forums/office/en-US/65a0b5f1-e58f-4916-b090-551bbf9c719d/problem-with-spreadsheetcompare?forum=officeitpro
+Spresheecomplaun (SSCL) is a launcher for Spreadsheetcompare.
+It consists in a small executable with reworked arguments.
+
+Using SSCL enables diff of xls files in version control software (like Git, Perforce, SVN...).
+
+## SSCL Syntax
+
+### Basic
+
+Basic command line is :
 
 `sscl.exe C:\book1.xlsx C:\book2.xlsx`
 
-This was originally done to enable xls files diff in version control software. 
+- Filenames are expected to be absolute pathes.
+- Filenames may have double quotes
 
-Filenames are expected to be absolute pathes.
+### Locate Spreadsheetcompare.exe
 
 Spreadsheetcompare.exe is searched using various methods:
 - MSI component location
@@ -18,4 +38,9 @@ It can also be explicitly given in commandline using `-d` argument, e.g. :
 
 `sscl.exe C:\book1.xlsx C:\book2.xlsx -d="C:\My Program Files (x86)\Microsoft Office\Office15\DCF"`
 
- 
+### Pause
+
+To enable easy debugger attachment, sscl.exe can be paused at start  using '-p' argument, e.g. :
+
+`sscl.exe C:\book1.xlsx C:\book2.xlsx -p`
+

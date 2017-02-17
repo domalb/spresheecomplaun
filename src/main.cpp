@@ -52,7 +52,7 @@ int ssclGetSpreadsheetCompareFolder(wchar_t* buffer)
 	{
 		// Ok
 	case INSTALLSTATE_LOCAL:
-	case INSTALLSTATE_SOURCE: return 0;
+	case INSTALLSTATE_SOURCE: installError = NULL; break;
 		// Error
 	case INSTALLSTATE_NOTUSED: installError = L"INSTALLSTATE_NOTUSED"; break;
 	case INSTALLSTATE_ABSENT: installError = L"INSTALLSTATE_ABSENT"; break;

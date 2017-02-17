@@ -38,9 +38,15 @@ It can also be explicitly given in commandline using `-d` argument, e.g. :
 
 ### Pause
 
-To enable easy debugger attachment, sscl.exe can be paused at start  using '-p' argument, e.g. :
+To enable easy debugger attachment, sscl.exe can be paused at start using '-p' argument, e.g. :
 
 `sscl.exe C:\book1.xlsx C:\book2.xlsx -p`
+
+### Verbose
+
+Log more information using '-v' argument, e.g. :
+
+`sscl.exe C:\book1.xlsx C:\book2.xlsx -v`
 
 ## Related project
 

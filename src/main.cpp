@@ -371,12 +371,12 @@ int wmain(int argc, wchar_t *argv[] /*, wchar_t *envp[]*/)
 	}
 
 	// Launch comparison
-	 int launchCode = ssclLaunchCompare(exeFolder, tmpFile);
-	 if(launchCode != 0)
-	 {
-		 std::wcout << L"error writing tmp file";
-		 return launchCode;
-	 }
+	int launchCode = ssclLaunchCompare(exeFolder, tmpFile);
+	if(launchCode != 0)
+	{
+		std::wcout << L"error writing tmp file";
+		return launchCode;
+	}
 	else if(verbose)
 	{
 		std::wcout << L"Launch success";

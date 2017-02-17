@@ -27,9 +27,10 @@ Basic command line is :
 ### Locate Spreadsheetcompare.exe
 
 Spreadsheetcompare.exe is searched using various methods:
-- MSI component location
-- Excel.exe location from registry key
-- Default office installation folders
+
+1. MSI component location
+2. Excel.exe location from registry key
+3. Default office installation folders
 
 It can also be explicitly given in commandline using `-d` argument, e.g. :
 

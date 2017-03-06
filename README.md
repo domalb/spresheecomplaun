@@ -50,5 +50,5 @@ Log more information using '-v' argument, e.g. :
 
 ## Related project
 
-[Excomp](https://githubusercontent.com/kniklas/excomp) Excel compare script - batch file that allows execution of Excel 2013 SPREADSHEETCOMPARE tool from command line with two files as arguments. SSCL was inpired from Excomp, but with some improuvements (Office folder detection, filenames quotes, debuggable)
+[Excomp](https://github.com/kniklas/excomp) Excel compare script - batch file that allows execution of Excel 2013 SPREADSHEETCOMPARE tool from command line with two files as arguments. SSCL was inpired from Excomp, but with some improuvements (Office folder detection, filenames quotes, debuggable)
 

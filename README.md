@@ -3,7 +3,7 @@
 Utility to ease Excel files comparison with Spreadsheetcompare.
 More specifically, enables Excel files diff in version control softwares
 
-## Spreadsheetcompare
+## Purpose
 
 Spreadsheetcompare is a tool available in Office which is not command-line friendly.
 The problem was reported in Microsoft TechCenter: http://social.technet.microsoft.com/Forums/office/en-US/65a0b5f1-e58f-4916-b090-551bbf9c719d/problem-with-spreadsheetcompare?forum=officeitpro

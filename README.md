@@ -13,7 +13,7 @@ It consists in a small executable with reworked arguments, that spawns Spreadshe
 
 Using SSCL enables diff of xls files in version control software (like Git, Perforce, SVN...).
 
-## SSCL Syntax
+## Syntax
 
 ### Basic
 

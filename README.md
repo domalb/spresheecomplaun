@@ -21,7 +21,10 @@ Basic command line is :
 
 `sscl.exe C:\book1.xlsx C:\book2.xlsx`
 
-- Filenames are expected to be absolute pathes.
+- Filenames are expected to be absolute pathes, or they should be found relative to
+ - sscl current directory
+ - sscl executable directory
+ - Spreadsheetcompare directory (see next section)
 - Filenames may have double quotes
 
 ### Locate Spreadsheetcompare.exe

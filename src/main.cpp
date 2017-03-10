@@ -2,34 +2,147 @@
 #include <msi.h>
 #include <iostream>
 #include <fstream>
+#include <string>
+#include <vector>
+#include <shlwapi.h>
+#include <assert.h>
 
 #define SSCL_ARG_VERBOSE L"-v"
 #define SSCL_ARG_PAUSE L"-p"
+#define SSCL_ARG_FILE L"-f="
+static const size_t SSCL_ARG_FILE_LENGTH = sizeof(SSCL_ARG_FILE) / sizeof(SSCL_ARG_FILE[0]) - 1;
 #define SSCL_ARG_DIRECTORY L"-d="
 static const size_t SSCL_ARG_DIRECTORY_LENGTH = sizeof(SSCL_ARG_DIRECTORY) / sizeof(SSCL_ARG_DIRECTORY[0]) - 1;
 
+bool verbose = false;
+#define SSCL_LOG(x_msg) if(verbose) { std::wcout << L"SSCL: " << x_msg << std::endl; }
+
+#ifdef _WIN32
+static const wchar_t fileSeparator = L'\\';
+static const wchar_t fileWrongSeparator = L'/';
+#else // _WIN
+static const wchar_t fileSeparator = L'/';
+static const wchar_t fileWrongSeparator = L'\\';
+#endif // _WIN
+
+typedef const wchar_t* sz;
+
 //----------------------------------------------------------------------------------------------------------------------
 //
 //----------------------------------------------------------------------------------------------------------------------
-bool ssclFolderExists(const wchar_t* folderPath)
+bool ssclGetCurrentDirectory(wchar_t* directoryPath)
 {
-	DWORD dwAttributes = ::GetFileAttributesW(folderPath);
-	return ((dwAttributes != INVALID_FILE_ATTRIBUTES) && (dwAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0);
+	DWORD get = GetCurrentDirectoryW(MAX_PATH, directoryPath);
+	if(get != 0)
+	{
+		return true;
+	}
+
+	return false;
 }
 
 //----------------------------------------------------------------------------------------------------------------------
 //
 //----------------------------------------------------------------------------------------------------------------------
-bool ssclFileExists(const wchar_t* filePath)
+bool ssclGetExecutableDirectory(wchar_t* directoryPath)
 {
-	DWORD dwAttribs = GetFileAttributes(filePath);
-	return ((dwAttribs != INVALID_FILE_ATTRIBUTES) && ((dwAttribs & FILE_ATTRIBUTE_DIRECTORY) == 0));
+	BOOL get = GetModuleFileNameW(NULL, directoryPath, MAX_PATH);
+	if(get != FALSE)
+	{
+		wchar_t* found = wcsrchr(directoryPath, fileSeparator);
+		if(found != NULL)
+		{
+			*found = 0;
+		}
+		return true;
+	}
+
+	return false;
 }
 
 //----------------------------------------------------------------------------------------------------------------------
 //
 //----------------------------------------------------------------------------------------------------------------------
-bool ssclTestSpreadsheetCompareFileInfolder(const wchar_t* folder)
+bool ssclDirectoryExists(sz directoryPath)
+{
+	DWORD attribs = GetFileAttributesW(directoryPath);
+	return ((attribs != INVALID_FILE_ATTRIBUTES) && (attribs & FILE_ATTRIBUTE_DIRECTORY) != 0);
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+//
+//----------------------------------------------------------------------------------------------------------------------
+bool ssclFileExists(sz filePath)
+{
+	DWORD attribs = GetFileAttributes(filePath);
+	return ((attribs != INVALID_FILE_ATTRIBUTES) && ((attribs & FILE_ATTRIBUTE_DIRECTORY) == 0));
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+//
+//----------------------------------------------------------------------------------------------------------------------
+bool ssclFilePathIsAbsolute(sz fileName)
+{
+	return (wcschr(fileName, L':') != NULL);
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+//
+//----------------------------------------------------------------------------------------------------------------------
+void ssclCanonicalizeFilePath(sz in, wchar_t* out)
+{
+	wchar_t tmpBuff1[MAX_PATH];
+	wcscpy_s(tmpBuff1, in);
+	wchar_t* val = tmpBuff1;
+	while(*val != 0)
+	{
+		if(*val == fileWrongSeparator)
+		{
+			*val = fileSeparator;
+		}
+		++val;
+	}
+
+	// PathCchCanonicalize
+	// PathCchCanonicalizeEx
+#ifndef NDEBUG
+	BOOL canon =
+#endif // NDEBUG
+		PathCanonicalize(out, tmpBuff1);
+	assert(canon == TRUE);
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+//
+//----------------------------------------------------------------------------------------------------------------------
+bool ssclTryFindAbsolute(sz localFilePath, const sz* absoluteDirs, size_t absoluteDirsCount, wchar_t* out)
+{
+	static const wchar_t separator [] = { fileSeparator, 0 };
+	for(size_t i = 0; i < absoluteDirsCount; ++i)
+	{
+		sz absDir = absoluteDirs[i];
+		if(absDir != NULL)
+		{
+			wchar_t absFilePath[MAX_PATH] = { 0 };
+			wcscpy_s(absFilePath, absDir);
+			wcscat_s(absFilePath, separator);
+			wcscat_s(absFilePath, localFilePath);
+			wchar_t canonAbsFilePath[MAX_PATH] = { 0 };
+			ssclCanonicalizeFilePath(absFilePath, canonAbsFilePath);
+			if(ssclFileExists(canonAbsFilePath))
+			{
+				wcscpy_s(out, MAX_PATH, canonAbsFilePath);
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+//
+//----------------------------------------------------------------------------------------------------------------------
+bool ssclTestSpreadsheetCompareFileInDirectory(const wchar_t* folder)
 {
 	wchar_t testPath[MAX_PATH];
 	wcscpy_s(testPath, folder);
@@ -40,14 +153,14 @@ bool ssclTestSpreadsheetCompareFileInfolder(const wchar_t* folder)
 //----------------------------------------------------------------------------------------------------------------------
 //
 //----------------------------------------------------------------------------------------------------------------------
-int ssclGetSpreadsheetCompareFolder(wchar_t* buffer)
+int ssclGetSpreadsheetCompareDirectory(wchar_t* buffer)
 {
 	// Locate component
 	static const wchar_t* const office = L"{00000409-78E1-11D2-B60F-006097C998E7}";
 	// 	const wchar_t* office2013 = L"{91150000-0011-0000-0000-0000000FF1CE}";
 	// 	const wchar_t* excel = L"{CC29E96F-7BC2-11D1-A921-00A0C91E2AA2}";
-	DWORD officeFolderLength = MAX_PATH;
-	INSTALLSTATE install = ::MsiLocateComponentW(office, buffer, &officeFolderLength);
+	DWORD officeDirLength = MAX_PATH;
+	INSTALLSTATE install = ::MsiLocateComponentW(office, buffer, &officeDirLength);
 	const wchar_t* installError;
 	switch(install)
 	{
@@ -65,19 +178,19 @@ int ssclGetSpreadsheetCompareFolder(wchar_t* buffer)
 	}
 	if(installError != NULL)
 	{
-		std::wcout << L" could not detect office component installation folder, error " << installError;
+		SSCL_LOG(L" could not detect office component installation directory, error " << installError);
 	}
 	else
 	{
 		wcscat_s(buffer, MAX_PATH, L"\\DCF");
 
-		if(ssclTestSpreadsheetCompareFileInfolder(buffer) == false)
+		if(ssclTestSpreadsheetCompareFileInDirectory(buffer) == false)
 		{
-			std::wcout << L"'spreadsheetcompare.exe' not found in excel installation folder '" << buffer << "'";
+			SSCL_LOG(L"'spreadsheetcompare.exe' not found in excel installation directory '" << buffer << "'");
 		}
 		else
 		{
-			// Success at getting installation folder
+			// Success at getting installation directory
 			return 0;
 		}
 	}
@@ -88,7 +201,7 @@ int ssclGetSpreadsheetCompareFolder(wchar_t* buffer)
 	LONG openError = RegOpenKeyExW(HKEY_LOCAL_MACHINE, excelKey, 0, KEY_READ, &hKey);
 	if(openError != ERROR_SUCCESS)
 	{
-		std::wcout << L"error opening excel installation folder registry key";
+		SSCL_LOG(L"error opening excel installation directory registry key");
 	}
 	else
 	{
@@ -96,7 +209,7 @@ int ssclGetSpreadsheetCompareFolder(wchar_t* buffer)
 		ULONG queryError = RegQueryValueExW(hKey, NULL, NULL, NULL, (LPBYTE)buffer, &bufferSize);
 		if(queryError != ERROR_SUCCESS)
 		{
-			std::wcout << L"error reading excel installation folder registry key";
+			SSCL_LOG(L"error reading excel installation directory registry key");
 		}
 		else
 		{
@@ -105,26 +218,26 @@ int ssclGetSpreadsheetCompareFolder(wchar_t* buffer)
 			const size_t excelKeyValueEndLength = sizeof(EXCEL_KEY_VALUE_END) / sizeof(EXCEL_KEY_VALUE_END[0]) - 1;
 			if(bufferLength <= excelKeyValueEndLength)
 			{
-				std::wcout << L"excel installation folder registry key is too short";
+				SSCL_LOG(L"excel installation directory registry key is too short");
 			}
 			else
 			{
-				size_t folderLength = bufferLength - excelKeyValueEndLength;
-				if(_wcsicmp(EXCEL_KEY_VALUE_END, buffer + folderLength) != 0)
+				size_t dirLength = bufferLength - excelKeyValueEndLength;
+				if(_wcsicmp(EXCEL_KEY_VALUE_END, buffer + dirLength) != 0)
 				{
-					std::wcout << L"excel installation folder registry key should end with '" << EXCEL_KEY_VALUE_END << "' : " << buffer;
+					SSCL_LOG(L"excel installation folder registry key should end with '" << EXCEL_KEY_VALUE_END << "' : " << buffer);
 				}
 				else
 				{
-					buffer[folderLength] = 0;
+					buffer[dirLength] = 0;
 					wcscat_s(buffer, MAX_PATH, L"DCF");
-					if(ssclTestSpreadsheetCompareFileInfolder(buffer) == false)
+					if(ssclTestSpreadsheetCompareFileInDirectory(buffer) == false)
 					{
-						std::wcout << L"'spreadsheetcompare.exe' not found in excel registry key installation folder '" << buffer << "'";
+						SSCL_LOG(L"'spreadsheetcompare.exe' not found in excel registry key installation folder '" << buffer << "'");
 					}
 					else
 					{
-						// Success at getting folder from registry key
+						// Success at getting directory from registry key
 						return 0;
 					}
 				}
@@ -132,8 +245,8 @@ int ssclGetSpreadsheetCompareFolder(wchar_t* buffer)
 		}
 	}
 
-	// Default installation folders
-	static const wchar_t* const defaultFolders[] =
+	// Default installation directories
+	static const wchar_t* const defaultDirs[] =
 	{
 		L"C:\\Program Files\\Microsoft Office\\Office15\\DCF",
 		L"C:\\Program Files\\Microsoft Office\\Office14\\DCF",
@@ -149,18 +262,18 @@ int ssclGetSpreadsheetCompareFolder(wchar_t* buffer)
 		L"C:\\Program Files (x86)\\Microsoft Office\\Office11\\DCF",
 		L"C:\\Program Files (x86)\\Microsoft Office\\Office10\\DCF",
 	};
-	for(int i = 0; i < sizeof(defaultFolders) / sizeof(defaultFolders[0]); ++i)
+	for(int i = 0; i < sizeof(defaultDirs) / sizeof(defaultDirs[0]); ++i)
 	{
-		const wchar_t* defaultFolder = defaultFolders[i];
-		if(ssclFolderExists(defaultFolder) && ssclTestSpreadsheetCompareFileInfolder(buffer))
+		const wchar_t* defaultDir = defaultDirs[i];
+		if(ssclDirectoryExists(defaultDir) && ssclTestSpreadsheetCompareFileInDirectory(buffer))
 		{
 			// Default installation directory
-			wcscpy_s(buffer, MAX_PATH, defaultFolder);
+			wcscpy_s(buffer, MAX_PATH, defaultDir);
 			return 0;
 		}
 	}
 
-	std::wcout << L"no default installation folder detected";
+	SSCL_LOG(L"no default installation directory detected");
 	return -1;
 }
 
@@ -173,14 +286,14 @@ int ssclWriteTmpFile(const wchar_t* file1, const wchar_t* file2, wchar_t* tmpFil
 	DWORD dwPathLength = GetTempPathW(MAX_PATH, tmpPath);
 	if((dwPathLength == 0) || (dwPathLength >= MAX_PATH))
 	{
-		std::wcout << L"error getting temp path";
+		SSCL_LOG(L"error getting temp path");
 		return -1;
 	}
 
 	UINT fileUid = GetTempFileNameW(tmpPath, L"sscl", 0, tmpFile);
 	if(fileUid == 0)
 	{
-		std::wcout << L"error getting temp file name";
+		SSCL_LOG(L"error getting temp file name");
 		return -1;
 	}
 
@@ -196,12 +309,12 @@ int ssclWriteTmpFile(const wchar_t* file1, const wchar_t* file2, wchar_t* tmpFil
 //----------------------------------------------------------------------------------------------------------------------
 //
 //----------------------------------------------------------------------------------------------------------------------
-int ssclLaunchCompare(const wchar_t* exeFolder, const wchar_t* tmpFile)
+int ssclLaunchCompare(const wchar_t* exeDirectory, const wchar_t* tmpFile)
 {
 	wchar_t exeFile[MAX_PATH];
-	wcscpy_s(exeFile, exeFolder);
+	wcscpy_s(exeFile, exeDirectory);
 	wcscat_s(exeFile, L"\\spreadsheetcompare.exe");
-	HINSTANCE hShellExec = ShellExecuteW(NULL, L"open", exeFile, tmpFile, exeFolder, SW_SHOWNORMAL);
+	HINSTANCE hShellExec = ShellExecuteW(NULL, L"open", exeFile, tmpFile, exeDirectory, SW_SHOWNORMAL);
 	bool success = (size_t(hShellExec) > 32);
 	return (success ? 0 : -1);
 }
@@ -226,12 +339,12 @@ int ssclGetUnquoted(const wchar_t* arg, wchar_t* buffer)
 		size_t argLength = wcslen(val);
 		if(argLength < 2)
 		{
-			std::wcout << L"invalid argument length";
+			SSCL_LOG(L"invalid argument length");
 			return -1;
 		}
 		else if(val[argLength - 1] != L'"')
 		{
-			std::wcout << L"quote detection error for argument " << arg;
+			SSCL_LOG(L"quote detection error for argument " << arg);
 			return -1;
 		}
 		else
@@ -248,6 +361,19 @@ int ssclGetUnquoted(const wchar_t* arg, wchar_t* buffer)
 //----------------------------------------------------------------------------------------------------------------------
 int wmain(int argc, wchar_t *argv[] /*, wchar_t *envp[]*/)
 {
+	wchar_t exeDir[MAX_PATH] = { 0 };
+	if(ssclGetExecutableDirectory(exeDir) == false)
+	{
+		SSCL_LOG(L"error getting executable directory");
+		return -1;
+	}
+	wchar_t curDir[MAX_PATH] = { 0 };
+	if(ssclGetCurrentDirectory(curDir) == false)
+	{
+		SSCL_LOG(L"error getting current directory");
+		return -1;
+	}
+
 	// Test for pause argument
 	for(int i = 1; i < argc; ++i)
 	{
@@ -259,9 +385,20 @@ int wmain(int argc, wchar_t *argv[] /*, wchar_t *envp[]*/)
 		}
 	}
 
+	// Test for verbose argument
+	for(int i = 1; i < argc; ++i)
+	{
+		const wchar_t* arg = argv[i];
+		if((arg != NULL) && (_wcsicmp(arg, SSCL_ARG_VERBOSE) == 0))
+		{
+			verbose = true;
+			break;
+		}
+	}
+
 	// Parse arguments
-	bool verbose = false;
-	wchar_t exeFolder[MAX_PATH] = { 0 };
+	std::vector<std::wstring> argDirs;
+	wchar_t sscDir[MAX_PATH] = { 0 };
 	wchar_t file1[MAX_PATH] = { 0 };
 	wchar_t file2[MAX_PATH] = { 0 };
 	for(int i = 1; i < argc; ++i)
@@ -275,20 +412,20 @@ int wmain(int argc, wchar_t *argv[] /*, wchar_t *envp[]*/)
 			}
 			if(_wcsicmp(arg, SSCL_ARG_VERBOSE) == 0)
 			{
-				verbose = true;
+				continue;
 			}
 			else if(_wcsnicmp(arg, SSCL_ARG_DIRECTORY, SSCL_ARG_DIRECTORY_LENGTH) == 0)
 			{
-				if(exeFolder[0] != 0)
+				if(sscDir[0] != 0)
 				{
-					std::wcout << L"multiple exe folder arguments";
+					SSCL_LOG(L"multiple exe directory arguments");
 					return -1;
 				}
 				arg += SSCL_ARG_DIRECTORY_LENGTH;
-				int unquoteCode = ssclGetUnquoted(arg, exeFolder);
+				int unquoteCode = ssclGetUnquoted(arg, sscDir);
 				if(unquoteCode != 0)
 				{
-					std::wcout << L"error getting unquoted exe folder from argument " << arg;
+					SSCL_LOG(L"error getting unquoted exe directory from argument " << arg);
 					return unquoteCode;
 				}
 			}
@@ -305,14 +442,14 @@ int wmain(int argc, wchar_t *argv[] /*, wchar_t *envp[]*/)
 				}
 				else
 				{
-					std::wcout << L"unexpected argument " << arg;
+					SSCL_LOG(L"unexpected argument " << arg);
 					return -1;
 				}
 
 				int unquoteCode = ssclGetUnquoted(arg, fileBuffer);
 				if(unquoteCode != 0)
 				{
-					std::wcout << L"error getting unquoted argument " << arg;
+					SSCL_LOG(L"error getting unquoted argument " << arg);
 					return unquoteCode;
 				}
 			}
@@ -320,66 +457,88 @@ int wmain(int argc, wchar_t *argv[] /*, wchar_t *envp[]*/)
 	}
 
 	// Check arguments
-	if(exeFolder[0] == 0)
+	if(sscDir[0] == 0)
 	{
-		int officeCode = ssclGetSpreadsheetCompareFolder(exeFolder);
+		int officeCode = ssclGetSpreadsheetCompareDirectory(sscDir);
 		if(officeCode != 0)
 		{
-			std::wcout << L"error getting Spreadsheetcompare folder";
+			SSCL_LOG(L"error getting Spreadsheetcompare directory");
 			return -1;
 		}
 	}
-	if(exeFolder[0] == 0)
+	if(sscDir[0] == 0)
 	{
-		std::wcout << L"no Spreadsheetcompare folder detected";
+		SSCL_LOG(L"no Spreadsheetcompare directory detected");
 		return -1;
 	}
-	else if(verbose)
+	else
 	{
-		std::wcout << L"Spreadsheetcompare folder : " << exeFolder;
+		SSCL_LOG(L"Spreadsheetcompare directory : " << sscDir);
 	}
+
+	sz absDirs[] = { sz(exeDir), sz(curDir), sz(sscDir) };
+	size_t absDirsCount = sizeof(absDirs) / sizeof(absDirs[0]);
+
 	if(file1[0] == 0)
 	{
-		std::wcout << L"no compare file detected";
+		SSCL_LOG(L"no compare file detected");
 		return -1;
 	}
-	else if(verbose)
+	else
 	{
-		std::wcout << L"File1 : " << file1;
+		if(ssclFilePathIsAbsolute(file1) == false)
+		{
+			if(ssclTryFindAbsolute(file1, absDirs, absDirsCount, file1) == false)
+			{
+				SSCL_LOG(L"Could not find absolute file1 : " << file1);
+				return -1;
+			}
+		}
+		SSCL_LOG(L"File1 : " << file1);
 	}
 	if(file2[0] == 0)
 	{
-		std::wcout << L"only one compare file detected";
+		SSCL_LOG(L"only one compare file detected");
 		return -1;
 	}
-	else if(verbose)
+	else
 	{
-		std::wcout << L"File2 : " << file2;
+		if(ssclFilePathIsAbsolute(file2) == false)
+		{
+			if(ssclTryFindAbsolute(file2, absDirs, absDirsCount, file2) == false)
+			{
+				SSCL_LOG(L"Could not find absolute file2 : " << file2);
+				return -1;
+			}
+		}
+		SSCL_LOG(L"File2 : " << file2);
 	}
+
+	// Find file1
 
 	// Write tmp file
 	wchar_t tmpFile[MAX_PATH] = { 0 };
 	int writeCode = ssclWriteTmpFile(file1, file2, tmpFile);
 	if(writeCode != 0)
 	{
-		std::wcout << L"error writing tmp file";
+		SSCL_LOG(L"error writing tmp file");
 		return writeCode;
 	}
-	else if(verbose)
+	else
 	{
-		std::wcout << L"Tmp file : " << tmpFile;
+		SSCL_LOG(L"Tmp file : " << tmpFile);
 	}
 
 	// Launch comparison
-	int launchCode = ssclLaunchCompare(exeFolder, tmpFile);
+	int launchCode = ssclLaunchCompare(sscDir, tmpFile);
 	if(launchCode != 0)
 	{
-		std::wcout << L"error writing tmp file";
+		SSCL_LOG(L"error writing tmp file");
 		return launchCode;
 	}
-	else if(verbose)
+	else
 	{
-		std::wcout << L"Launch success";
+		SSCL_LOG(L"Launch success");
 	}
 
 	 return 0;

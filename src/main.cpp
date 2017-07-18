@@ -153,14 +153,10 @@ bool ssclTestSpreadsheetCompareFileInDirectory(const wchar_t* folder)
 //----------------------------------------------------------------------------------------------------------------------
 //
 //----------------------------------------------------------------------------------------------------------------------
-int ssclGetSpreadsheetCompareDirectory(wchar_t* buffer)
+int ssclGetSpreadsheetCompareDirectory(wchar_t* buffer, const wchar_t* const officeUid)
 {
-	// Locate component
-	static const wchar_t* const office = L"{00000409-78E1-11D2-B60F-006097C998E7}";
-	// 	const wchar_t* office2013 = L"{91150000-0011-0000-0000-0000000FF1CE}";
-	// 	const wchar_t* excel = L"{CC29E96F-7BC2-11D1-A921-00A0C91E2AA2}";
 	DWORD officeDirLength = MAX_PATH;
-	INSTALLSTATE install = ::MsiLocateComponentW(office, buffer, &officeDirLength);
+	INSTALLSTATE install = ::MsiLocateComponentW(officeUid, buffer, &officeDirLength);
 	const wchar_t* installError;
 	switch(install)
 	{
@@ -459,8 +455,13 @@ int wmain(int argc, wchar_t *argv[] /*, wchar_t *envp[]*/)
 	// Check arguments
 	if(sscDir[0] == 0)
 	{
-		int officeCode = ssclGetSpreadsheetCompareDirectory(sscDir);
-		if(officeCode != 0)
+		// Locate component
+		static const wchar_t* office = L"{00000409-78E1-11D2-B60F-006097C998E7}";
+		static const wchar_t* office2013 = L"{91150000-0011-0000-0000-0000000FF1CE}";
+		static const wchar_t* excel = L"{CC29E96F-7BC2-11D1-A921-00A0C91E2AA2}";
+		if((ssclGetSpreadsheetCompareDirectory(sscDir, office) != 0) &&
+		   (ssclGetSpreadsheetCompareDirectory(sscDir, office2013) != 0) &&
+		   (ssclGetSpreadsheetCompareDirectory(sscDir, excel) != 0))
 		{
 			SSCL_LOG(L"error getting Spreadsheetcompare directory");
 			return -1;
@@ -541,6 +542,5 @@ int wmain(int argc, wchar_t *argv[] /*, wchar_t *envp[]*/)
 		SSCL_LOG(L"Launch success");
 	}
 
-	 return 0;
+	return 0;
 }
-

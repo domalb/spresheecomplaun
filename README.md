@@ -18,14 +18,13 @@ Using SSCL enables diff of xls files in version control software (like Git, Perf
 ### Basic
 
 Basic command line is :
-
 `sscl.exe C:\book1.xlsx C:\book2.xlsx`
 
 - File names may be absolute pathes
 - File names may be relative, if so they must be found relatively to one of:
- - sscl current directory
- - sscl executable directory
- - Spreadsheetcompare directory (see next section)
+   - sscl current directory
+   - sscl executable directory
+   - Spreadsheetcompare directory (see next section)
 - File names may have double quotes
 
 ### Locate Spreadsheetcompare.exe
@@ -54,5 +53,5 @@ Log more information using '-v' argument, e.g. :
 
 ## Related project
 
-[Excomp](https://github.com/kniklas/excomp) Excel compare script - batch file that allows execution of Excel 2013 SPREADSHEETCOMPARE tool from command line with two files as arguments. SSCL was inpired from Excomp, but with some improuvements (Office folder detection, filenames quotes, debuggable)
+[Excomp](https://github.com/kniklas/excomp) Excel compare script - batch file that allows execution of Excel 2013 SPREADSHEETCOMPARE tool from command line with two files as arguments. SSCL was inspired from Excomp, but with some improuvements (Office folder detection, filenames quotes, debuggable)
 
